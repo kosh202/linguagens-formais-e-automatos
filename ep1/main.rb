@@ -1,45 +1,104 @@
-class ADF
+class MorseTranslator
   def initialize(cadeia)
-    @cadeia = cadeia
+    @cadeia = cadeia.split("")  # Divide a cadeia em caracteres
     @indice = 0
-    @max = cadeia.size
-    @letra = ""  # Inicializa a variável letra aqui
+    @max = @cadeia.size
   end
 
-  # Pega apenas um caracter
+  # Pega apenas um caracter da cadeia
   def proximo
     if @indice >= @max
       ""
     else
-      @cadeia[@indice]
+      @cadeia[@indice].tap { @indice += 1 }  # Incrementa o índice ao retornar o símbolo
     end
   end
 
-  # Converte o código Morse para a letra correspondente
+  # Converte o código Morse acumulado para a letra correspondente
   def morseToletra(morse)
-    # Tabela de correspondência entre Morse e letras
-    morse_code = [
-      [".-", "A"], ["-...", "B"], ["-.-.", "C"], ["-..", "D"], [".", "E"],
-      ["..-.", "F"], ["--.", "G"], ["....", "H"], ["..", "I"], [".---", "J"],
-      ["-.-", "K"], [".-..", "L"], ["--", "M"], ["-.", "N"], ["---", "O"],
-      [".--.", "P"], ["--.-", "Q"], [".-.", "R"], ["...", "S"], ["-", "T"],
-      ["..-", "U"], ["...-", "V"], [".--", "W"], ["-..-", "X"], ["-.--", "Y"],
-      ["--..", "Z"], ["",""],
-
-      # Números de 0-9
-      ["-----", "0"], [".----", "1"], ["..---", "2"], ["...--", "3"], ["....-", "4"],
-      [".....", "5"], ["-....", "6"], ["--...", "7"], ["---..", "8"], ["----.", "9"],
-
-      # Caracteres especiais
-      [".-.-.-", "."], [",--..", ","], ["-....-", "-"], ["..--..", "?"],
-    ]
-
-    # Encontra a letra correspondente ao código Morse
-    morse_entry = morse_code.find { |morse_pair| morse_pair[0] == morse }
-    if morse_entry
-      return morse_entry[1]  # Retorna a letra correspondente
+    case morse
+    when ".-"
+      "A"
+    when "-..."
+      "B"
+    when "-.-."
+      "C"
+    when "-.."
+      "D"
+    when "."
+      "E"
+    when "..-."
+      "F"
+    when "--."
+      "G"
+    when "...."
+      "H"
+    when ".."
+      "I"
+    when ".---"
+      "J"
+    when "-.-"
+      "K"
+    when ".-.."
+      "L"
+    when "--"
+      "M"
+    when "-."
+      "N"
+    when "---"
+      "O"
+    when ".--."
+      "P"
+    when "--.-"
+      "Q"
+    when ".-."
+      "R"
+    when "..."
+      "S"
+    when "-"
+      "T"
+    when "..-"
+      "U"
+    when "...-"
+      "V"
+    when ".--"
+      "W"
+    when "-..-"
+      "X"
+    when "-.--"
+      "Y"
+    when "--.."
+      "Z"
+    when "-----"
+      "0"
+    when ".----"
+      "1"
+    when "..---"
+      "2"
+    when "...--"
+      "3"
+    when "....-"
+      "4"
+    when "....."
+      "5"
+    when "-...."
+      "6"
+    when "--..."
+      "7"
+    when "---.."
+      "8"
+    when "----."
+      "9"
+    when ".-.-.-"
+      "."
+    when "--..--"
+      ","
+    when "-....-"
+      "-"
+    when "..--.."
+      "?"
     else
-      return "?"  # Caso não encontre, retorna um caractere de erro
+      "?"  # Caso não seja encontrado, retorna erro
     end
   end
 
@@ -47,46 +106,38 @@ class ADF
     estado = "q0"
     morse = ""
     palavra = ""
-  
+
     puts "Máquina iniciou no estado: " + estado
-  
+
     loop do
       simbolo = proximo
       case [simbolo, estado]
-      in [".", "q0"]
-        estado = "q0"
+      when [".", "q0"]
         morse += "."
-      in ["-", "q0"]
-        estado = "q0"
+      when ["-", "q0"]
         morse += "-"
-      in [" ", "q0"]
-        estado = "q0"
-        # Converte o código Morse acumulado em uma letra
+      when [" ", "q0"]
         palavra += morseToletra(morse)
         morse = ""  # Reseta o código Morse para a próxima letra
-      in ["/", "q0"]
-        estado = "q0"
-        # Finaliza a palavra (pode ser feito de acordo com a necessidade)
-        palavra += " "
-      in ["", "q0"]
-        # Caso tenha terminado a cadeia de caracteres
+      when [" ", "q0"]
+        palavra += " "  # Adiciona espaço para separar palavras
+      when ["", "q0"]
         palavra += morseToletra(morse) unless morse.empty?
-        break
+        break  # Termina quando a cadeia estiver vazia
       else
         puts "Erro"
         break
       end
-  
-      @indice += 1
+
       puts "Estado atual: " + estado
       puts "Código Morse acumulado: " + morse
       puts "Palavra: " + palavra
     end
 
-    puts "Palavra resultante: " + palavra
+    puts "Palavra resultante: " + palavra.strip  # Remove espaços em branco no final
   end
 end
 
-adf = ADF.new(".- / -... -.-. -.. . ..-. --. .... .. .--- -.- .-.. -- -. --- .--. --.- .-. ... - ..- ...- .-- -..- -.-- --.. ----- .---- ..--- ...-- ....- ..... -.... --... ---.. ----. .-.-.- --..-- -....- ..--..
-")
+# Teste do Tradutor com uma sequência de Código Morse
+adf = MorseTranslator.new(".- -... -.-. -.. . ..-. --. .... .. .--- -.- .-.. -- -. --- .--. --.- .-. ... - ..- ...- .-- -..- -.-- --.. ----- .---- ..--- ...-- ....- ..... -.... --... ---.. ----. .-.-.- --..-- -....- ..--..")
 adf.iniciar
