@@ -16,7 +16,7 @@ class ADF
   end
 
   # Converte o código Morse para a letra correspondente
-  def mosrseToletra(morse)
+  def morseToletra(morse)
     # Tabela de correspondência entre Morse e letras
     morse_code = [
       [".-", "A"], ["-...", "B"], ["-.-.", "C"], ["-..", "D"], [".", "E"],
@@ -24,7 +24,14 @@ class ADF
       ["-.-", "K"], [".-..", "L"], ["--", "M"], ["-.", "N"], ["---", "O"],
       [".--.", "P"], ["--.-", "Q"], [".-.", "R"], ["...", "S"], ["-", "T"],
       ["..-", "U"], ["...-", "V"], [".--", "W"], ["-..-", "X"], ["-.--", "Y"],
-      ["--..", "Z"]
+      ["--..", "Z"], ["",""],
+
+      # Números de 0-9
+      ["-----", "0"], [".----", "1"], ["..---", "2"], ["...--", "3"], ["....-", "4"],
+      [".....", "5"], ["-....", "6"], ["--...", "7"], ["---..", "8"], ["----.", "9"],
+
+      # Caracteres especiais
+      [".-.-.-", "."], [",--..", ","], ["-....-", "-"], ["..--..", "?"],
     ]
 
     # Encontra a letra correspondente ao código Morse
@@ -55,12 +62,16 @@ class ADF
       in [" ", "q0"]
         estado = "q0"
         # Converte o código Morse acumulado em uma letra
-        palavra += mosrseToletra(morse)
+        palavra += morseToletra(morse)
         morse = ""  # Reseta o código Morse para a próxima letra
       in ["/", "q0"]
         estado = "q0"
         # Finaliza a palavra (pode ser feito de acordo com a necessidade)
         palavra += " "
+      in ["", "q0"]
+        # Caso tenha terminado a cadeia de caracteres
+        palavra += morseToletra(morse) unless morse.empty?
+        break
       else
         puts "Erro"
         break
@@ -69,12 +80,13 @@ class ADF
       @indice += 1
       puts "Estado atual: " + estado
       puts "Código Morse acumulado: " + morse
-      puts "palavra: " + palavra
+      puts "Palavra: " + palavra
     end
 
     puts "Palavra resultante: " + palavra
   end
 end
 
-adf = ADF.new("-.-. --- -.. .. --. --- / -- --- .-. ... . / -.. . / . -..- . -- .--. .-.. --- ")
+adf = ADF.new(".- / -... -.-. -.. . ..-. --. .... .. .--- -.- .-.. -- -. --- .--. --.- .-. ... - ..- ...- .-- -..- -.-- --.. ----- .---- ..--- ...-- ....- ..... -.... --... ---.. ----. .-.-.- --..-- -....- ..--..
+")
 adf.iniciar
