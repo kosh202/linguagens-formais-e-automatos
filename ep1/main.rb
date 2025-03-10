@@ -97,6 +97,12 @@ class MorseTranslator
       "-"
     when "..--.."
       "?"
+    when " "
+      ""
+    when ""
+      ""
+    when "/"
+      " "
     else
       "?"  # Caso não seja encontrado, retorna erro
     end
@@ -113,15 +119,38 @@ class MorseTranslator
       simbolo = proximo
       case [simbolo, estado]
       when [".", "q0"]
+        estado = "q1"
         morse += "."
       when ["-", "q0"]
+        estado = "q0"
         morse += "-"
       when [" ", "q0"]
         palavra += morseToletra(morse)
+        estado = "q0"
         morse = ""  # Reseta o código Morse para a próxima letra
-      when [" ", "q0"]
+      when ["-", "q1"]
+        estado = "q0"
+        morse += "-"
+      when [".", "q1"]
+        estado = "q1"
+        morse += "."
+      when [" ", "q1"]
+        palavra += morseToletra(morse)
+        estado = "q0"
+        morse = ""  # Reseta o código Morse para a próxima letra
+      when ["/", "q0"]
+        estado = "q0"
         palavra += " "  # Adiciona espaço para separar palavras
       when ["", "q0"]
+        palavra += morseToletra(morse)
+        estado = "q2"
+        morse = ""
+      when ["", "q1"]
+        palavra += morseToletra(morse)
+        estado = "q2"
+        morse = ""
+      when ["", "q2"]
+        estado = "q2"
         palavra += morseToletra(morse) unless morse.empty?
         break  # Termina quando a cadeia estiver vazia
       else
