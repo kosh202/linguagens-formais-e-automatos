@@ -32,8 +32,9 @@ def reconhecer_horario(texto)
     end
   end
   
-  # Função para reconhecer tags (como #trabalho, #casa)
+  # Função para reconhecer tags 
   def reconhecer_tag(texto)
+    # so ficou grande para pegar as letras esepciais
     tag_regex = /#(\w|[a-zA-Záéíóúãõçâêîôûàèìòùãõâêîôûàèìòùç])+/
     match = texto.match(tag_regex)
     if match
@@ -89,9 +90,9 @@ def reconhecer_horario(texto)
   
   # Processar as entradas
   processar_texto(entrada1)
-  processar_texto(entrada2)
-  processar_texto(entrada3)
-  processar_texto(entrada4)
-  processar_texto(entrada5)
-  processar_texto(entrada6)
-  processar_texto(entrada7)
+#   processar_texto(entrada2)
+#   processar_texto(entrada3)
+#   processar_texto(entrada4)
+#   processar_texto(entrada5)
+#   processar_texto(entrada6)
+#   processar_texto(entrada7)
