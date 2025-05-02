@@ -6,7 +6,7 @@ Este projeto implementa um **parser de YAML simples** em Ruby utilizando o **alg
 
 - Parser baseado no algoritmo de Earley.
 - Suporte a tipos YAML: `string`, `number`, `boolean`, `null`.
-- Suporte a expressões matemáticas com `+`, `-`, `*`, `/`, `()` e `^` (potência).
+- Suporte a expressões matemáticas com `+`, `-`, `*`, `/`, `()`, `^` (potência).
 - Avaliação automática de expressões dentro de campos com a notação `$...$`.
 
 ## Estrutura do Código
@@ -53,19 +53,17 @@ class Estado
   end
 
   alias eql? ==
+
   def hash
     [@regra, @ponto, @inicio].hash
   end
 end
 ```
-#### Explicação: 
-
-* Atributos: Guarda a regra da gramática, a posição atual da análise e a posição de início.
-
-* Métodos principais: O simbolo_a_frente pega o próximo símbolo a ser analisado, e o avancar cria um novo estado com o ponto avançado. O método completo? verifica se a produção foi completada.
 
 ---
+
 ### 2. Gramática (GRAMATICA)
+
 A gramática define como o parser deve estruturar e interpretar o YAML. A gramática inclui regras para os tipos básicos de dados YAML e expressões matemáticas.
 
 ```ruby
@@ -74,20 +72,20 @@ GRAMATICA = {
   'PAIRS' => [['PAIR'], ['PAIR', 'PAIRS']],
   'PAIR' => [['KEY', ':', 'VALUE']],
   'KEY' => [['string']],
-  'VALUE' => [['string'], ['number'], ['boolean'], ['null'], ['OBJETO'], ['LISTA'], ['CALC']],
-
-  # Expressões matemáticas
-  'CALC' => [['TERM'], ['TERM', '+', 'CALC'], ['TERM', '-', 'CALC']],
+  'VALUE' => [['string'], ['number'], ['boolean'], ['null'], ['CALC']],
+  'CALC' => [['EXP']],
+  'EXP' => [['TERM'], ['TERM', '+', 'EXP'], ['TERM', '-', 'EXP']],
   'TERM' => [['FACTOR'], ['FACTOR', '*', 'TERM'], ['FACTOR', '/', 'TERM']],
-  'FACTOR' => [['number'], ['(', 'CALC', ')']]
+  'FACTOR' => [['BASE'], ['BASE', '^', 'FACTOR']],
+  'BASE' => [['number'], ['(', 'EXP', ')']]
 }
 ```
-#### Explicação: 
 
-Regras de gramática: Aqui definimos como os tipos de dados YAML são interpretados (strings, números, booleanos, null), além de incluir a parte da gramática para expressões matemáticas com as produções CALC, TERM, e FACTOR.
+---
 
-### 3. Função lexer
-O lexer converte o texto YAML em uma lista de tokens. Ele usa expressões regulares para identificar diferentes componentes do YAML.
+### 3. Função `lexer`
+
+O lexer converte o texto YAML em uma lista de tokens. Ele identifica valores comuns e expressões dentro de `$...$`.
 
 ```ruby
 def lexer(texto)
@@ -95,33 +93,42 @@ def lexer(texto)
   texto.each_line do |linha|
     linha.strip!
     next if linha.empty?
+
     if linha =~ /^([\w]+):\s*(.+)$/
       chave = $1
       valor = $2.strip
       tokens << [:string, chave]
       tokens << [":", ":"]
 
-      # Tokeniza expressões matemáticas
-      until valor.empty?
-        case valor
-        when /^(\d+)/
-          tokens << [:number, $1]
-          valor = valor[$1.size..].lstrip
-        when /^(true|false)/
-          tokens << [:boolean, $1]
-          valor = valor[$1.size..].lstrip
-        when /^null/
-          tokens << [:null, 'null']
-          valor = valor[4..].lstrip
-        when /^"([^"]*)"/
-          tokens << [:string, $1]
-          valor = valor[$&.size..].lstrip
-        when /^[\+\-\*\/\(\)]/
-          tokens << [$&.to_sym, $&]
-          valor = valor[1..].lstrip
+      if valor.match(/^\$.*\$$/)
+        expressao = valor[1..-2] # remove os cifrões
+        until expressao.empty?
+          case expressao
+          when /^(\d+)/
+            tokens << [:number, $1]
+            expressao = expressao[$1.size..].lstrip
+          when /^[+\-\*\/\^]/
+            tokens << [$&.to_sym, $&]
+            expressao = expressao[1..].lstrip
+          when /^\(/
+            tokens << ["(", "("]
+            expressao = expressao[1..].lstrip
+          when /^\)/
+            tokens << [")", ")"]
+            expressao = expressao[1..].lstrip
+          else
+            raise "Token inválido na expressão: #{expressao}"
+          end
+        end
+      else
+        if valor =~ /^\d+$/
+          tokens << [:number, valor]
+        elsif valor == 'true' || valor == 'false'
+          tokens << [:boolean, valor]
+        elsif valor == 'null'
+          tokens << [:null, valor]
         else
           tokens << [:string, valor]
-          break
         end
       end
     end
@@ -129,11 +136,12 @@ def lexer(texto)
   tokens
 end
 ```
-#### Explicação:
-Conversão em tokens: O lexer lê cada linha do arquivo YAML e divide os dados em tokens, como chaves (KEY), valores (VALUE), operadores matemáticos (+, -, *, /, ^) e parênteses.
 
-### 1. Função earley_parse
-Aqui ocorre a execução do algoritmo de Earley para realizar a análise sintática.
+---
+
+### 4. Função `earley_parse`
+
+Executa o algoritmo de Earley para validação sintática dos tokens.
 
 ```ruby
 def earley_parse(tokens, gramatica)
@@ -143,84 +151,111 @@ def earley_parse(tokens, gramatica)
   (0..tokens.size).each do |i|
     loop do
       tamanho_antes = chart[i].size
-
       chart[i].dup.each do |estado|
-        if !estado.completo? && gramatica.key?(estado.simbolo_a_frente)
-          gramatica[estado.simbolo_a_frente].each do |producao|
-            chart[i] << Estado.new([estado.simbolo_a_frente, producao], 0, i)
+        simbolo = estado.simbolo_a_frente
+
+        if simbolo && gramatica.key?(simbolo)
+          gramatica[simbolo].each do |producao|
+            chart[i] << Estado.new([simbolo, producao], 0, i)
           end
-        elsif !estado.completo? && i < tokens.size && terminal?(estado.simbolo_a_frente)
+        elsif simbolo && i < tokens.size && terminal?(simbolo)
           token = tokens[i]
-          if simbolo_compatível?(estado.simbolo_a_frente, token)
+          if simbolo_compatível?(simbolo, token)
             chart[i + 1] << estado.avancar
           end
         elsif estado.completo?
-          chart[estado.inicio].each do |estado_antigo|
-            if estado_antigo.simbolo_a_frente == estado.regra[0]
-              chart[i] << estado_antigo.avancar
+          chart[estado.inicio].each do |e|
+            if e.simbolo_a_frente == estado.regra[0]
+              chart[i] << e.avancar
             end
           end
         end
       end
-
       break if chart[i].size == tamanho_antes
     end
+  end
+
+  puts "\nCHART FINAL"
+  chart.each_with_index do |conjunto, i|
+    puts "\nChart[#{i}]"
+    conjunto.each { |e| puts e }
   end
 
   chart.last.any? { |e| e.regra[0] == 'S' && e.completo? && e.inicio == 0 }
 end
 ```
-#### Explicação:
-Algoritmo de Earley: O algoritmo realiza a análise sintática por meio de um conjunto de estados. A cada token lido, ele verifica se é possível expandir ou avançar com base nas produções da gramática.
 
-Tabela de Earley (chart): Armazena os estados durante o processo de parsing.
+---
 
-### 5. Função avaliar_expressao
-Após a validação do YAML, a função avaliar_expressao trata de expressões matemáticas encontradas no YAML.
+### 5. Função `avaliar_expressao`
+
+Avalia expressões matemáticas extraídas de valores com `$...$`.
 
 ```ruby
 def avaliar_expressao(expr)
-  expr.gsub!('^', '**') # Ruby usa ** para potência
+  expr.gsub!('^', '**')
   begin
-    resultado = eval(expr)
-    resultado
-  rescue
-    "Erro na expressão"
+    eval(expr)
+  rescue => e
+    "Erro: #{e.message}"
   end
 end
 ```
-#### Explicação:
-Avaliação de expressões: A função substitui o símbolo ^ por ** (o operador de potência do Ruby) e usa o método eval para calcular o valor da expressão.
 
-### 6. Fluxo do Script
-O script realiza as seguintes etapas:
+---
 
-* Lê o conteúdo do arquivo YAML.
-* Converte o YAML em tokens usando o lexer.
-* Passa os tokens para o algoritmo de Earley para validação s intática.
-* Se o YAML for válido, ele avalia as expressões matemáticas dentro d os valores YAML.
-* Exibe os resultados de validação e das expressões matemáticas.
+### 6. Execução do Script
 
-### 7. Exemplo de YAML aceito
-Aqui está um exemplo de arquivo YAML:
+```ruby
+texto = File.read('exemplo.yaml')
+tokens = lexer(texto)
+puts "Tokens: #{tokens.inspect}"
+
+if earley_parse(tokens, GRAMATICA)
+  puts "\nResultado: YAML VÁLIDO"
+  puts "\nAvaliações:"
+  texto.each_line do |linha|
+    if linha =~ /^([\w]+):\s*\$(.*)\$/
+      chave = $1
+      expr = $2
+      puts "#{chave}: #{avaliar_expressao(expr)}"
+    end
+  end
+else
+  puts "\nResultado: YAML INVÁLIDO"
+end
+```
+
+---
+
+## Exemplo de YAML Aceito
 
 ```yaml
-nome: João
-idade: 30
-ativo: true
-conta: $9/3+21^1$
+expressao_simples: $4 + 5$
+expressao_prioridade: $4 + 5 * 2$
+expressao_com_parenteses: $(4 + 5) * 2$
+expressao_com_expoente: $2 ^ 3$
+expressao_complexa: $(2 + 3) * (4 + 1) ^ 2$
 ```
-### Saida esperada
-```makefile
-Tokens: [[:string, "nome"], [":", ":"], [:string, "João"], [:string, "idade"], [":", ":"], [:number, "30"], [:string, "ativo"], [":", ":"], [:boolean, "true"], [:string, "conta"], [":", ":"], [:string, "$9/3+21^1$"]]
+
+### Saída Esperada
+
+```bash
+Tokens: [[:string, "expressao_simples"], [":", ":"], [:number, "4"], [:+, "+"], [:number, "5"], ...]
 
 Resultado: YAML VÁLIDO
 
 Avaliações:
-conta: 24
+expressao_simples: 9
+expressao_prioridade: 14
+expressao_com_parenteses: 18
+expressao_com_expoente: 8
+expressao_complexa: 125
 ```
 
-Requisitos
-Ruby (>= 2.5)
+---
 
-Nenhuma gem externa é necessária.
+## Requisitos
+
+- Ruby (>= 2.5)
+- Nenhuma gem externa é necessária.

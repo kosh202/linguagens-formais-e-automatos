@@ -1,4 +1,9 @@
-nome: João
-idade: 30
+nome: "Carlos"
 ativo: true
-conta: $9/3+21^1$
+idade: 30
+nulo: null
+expressao_simples: $4 + 5$
+expressao_prioridade: $4 + 5 * 2$
+expressao_com_parenteses: $(4 + 5) * 2$
+expressao_com_expoente: $2 ^ 3$
+expressao_complexa: $(2 + 3) * (4 + 1) ^ 2$

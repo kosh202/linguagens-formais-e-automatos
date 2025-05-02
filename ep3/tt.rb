@@ -38,55 +38,57 @@ class Estado
   end
 end
 
-# Gramática expandida com expressões matemáticas
+# Gramática com expressões matemáticas
 GRAMATICA = {
   'S' => [['PAIRS']],
   'PAIRS' => [['PAIR'], ['PAIR', 'PAIRS']],
   'PAIR' => [['KEY', ':', 'VALUE']],
   'KEY' => [['string']],
   'VALUE' => [['string'], ['number'], ['boolean'], ['null'], ['OBJETO'], ['LISTA'], ['CALC']],
-
-  # Expressões matemáticas
-  'CALC' => [['TERM'], ['TERM', '+', 'CALC'], ['TERM', '-', 'CALC']],
-  'TERM' => [['FACTOR'], ['FACTOR', '*', 'TERM'], ['FACTOR', '/', 'TERM']],
-  'FACTOR' => [['number'], ['(', 'CALC', ')']]
+  'CALC' => [['EXPR']],
+  'EXPR' => [['TERM'], ['EXPR', '+', 'TERM'], ['EXPR', '-', 'TERM']],
+  'TERM' => [['FACTOR'], ['TERM', '*', 'FACTOR'], ['TERM', '/', 'FACTOR']],
+  'FACTOR' => [['number'], ['(', 'EXPR', ')'], ['FACTOR', '^', 'FACTOR']]
 }
 
-# Lexer YAML com expressões
-OPERADORES = %w[+ - * / ( )]
+OPERADORES = %w[+ - * / ( ) ^]
 
 def lexer(texto)
   tokens = []
   texto.each_line do |linha|
     linha.strip!
     next if linha.empty?
+
     if linha =~ /^([\w]+):\s*(.+)$/
       chave = $1
       valor = $2.strip
       tokens << [:string, chave]
       tokens << [":", ":"]
 
-      # Tokeniza expressões matemáticas
-      until valor.empty?
+      if valor.start_with?("$") && valor.end_with?("$")
+        expressao = valor[1..-2].strip
+        until expressao.empty?
+          case expressao
+          when /^\d+/
+            tokens << [:number, $&]
+            expressao = expressao[$&.size..].lstrip
+          when /^[+\-*\/^()]/
+            tokens << [$&.to_sym, $&]
+            expressao = expressao[1..].lstrip
+          else
+            raise "Token inválido na expressão: #{expressao}"
+          end
+        end
+      else
         case valor
-        when /^(\d+)/
-          tokens << [:number, $1]
-          valor = valor[$1.size..].lstrip
-        when /^(true|false)/
-          tokens << [:boolean, $1]
-          valor = valor[$1.size..].lstrip
-        when /^null/
-          tokens << [:null, 'null']
-          valor = valor[4..].lstrip
-        when /^"([^"]*)"/
+        when /^(true|false)$/
+          tokens << [:boolean, valor]
+        when /^null$/
+          tokens << [:null, valor]
+        when /^"([^"]*)"$/
           tokens << [:string, $1]
-          valor = valor[$&.size..].lstrip
-        when /^[\+\-\*\/\(\)]/
-          tokens << [$&.to_sym, $&]
-          valor = valor[1..].lstrip
         else
           tokens << [:string, valor]
-          break
         end
       end
     end
@@ -125,11 +127,18 @@ def earley_parse(tokens, gramatica)
     end
   end
 
+  # Impressão dos charts (opcional para debug)
+  puts "\n--- CHART FINAL ---"
+  chart.each_with_index do |conj, idx|
+    puts "Chart[#{idx}]:"
+    conj.each { |estado| puts "  #{estado}" }
+  end
+
   chart.last.any? { |e| e.regra[0] == 'S' && e.completo? && e.inicio == 0 }
 end
 
 def terminal?(simbolo)
-  ['string', 'number', 'boolean', 'null', ':', '+', '-', '*', '/', '(', ')'].include?(simbolo.to_s)
+  ['string', 'number', 'boolean', 'null', ':', '+', '-', '*', '/', '(', ')', '^'].include?(simbolo.to_s)
 end
 
 def simbolo_compatível?(simbolo, token)
@@ -137,16 +146,16 @@ def simbolo_compatível?(simbolo, token)
 end
 
 def avaliar_expressao(expr)
-  expr.gsub!('^', '**') # Ruby usa ** para potência
+  expr.gsub!('^', '**')
   begin
     resultado = eval(expr)
     resultado
-  rescue
-    "Erro na expressão"
+  rescue => e
+    "Erro: #{e.message}"
   end
 end
 
-# Leitura e execução
+# Execução
 yaml_path = 'test.yaml'
 yaml_text = File.read(yaml_path)
 tokens = lexer(yaml_text)
@@ -155,11 +164,11 @@ puts "Tokens: #{tokens.inspect}"
 valido = earley_parse(tokens, GRAMATICA)
 puts "\nResultado: #{valido ? 'YAML VÁLIDO' : 'YAML INVÁLIDO'}"
 
-# Avaliação extra (após o parse)
 if valido
   puts "\nAvaliações:"
   yaml_text.each_line do |linha|
-    if linha =~ /^([\w]+):\s*\$(.+)\$$/
+    linha.strip!
+    if linha =~ /^([\w]+):\s*\$(.+)\$\s*$/
       chave = $1
       expressao = $2.strip
       puts "#{chave}: #{avaliar_expressao(expressao)}"
