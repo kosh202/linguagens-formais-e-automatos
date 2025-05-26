@@ -210,11 +210,7 @@ end
 
 # entrada = "fascfasccccdfasccfbsccdfbsccfbsccd#scscsccscc" # Representa a cadeia "aabbb"
 # entrada = "fascfascdfasccfbsccdfbsccfbsccdscc#scscsccsccscc" # Representa a cadeia "aabbcc"
-# entrada = "fascfascdfasccfbsccdfbsccfbsccd#scscscsccscc" # Representa a cadeia "aaabbb" e espera "cccccc"
-# entrada = "fascfaccdfscfascdfasccfscccdfbsccc#scscscsccscc"
-entrada = "fascfascdfasccfbscdfbsccfbsccdfbsccfbsccdsccc#scscscsccscc"
-
-
+entrada = "fascfascdfasccfbsccdfbsccfbsccd#scscscsccscc" # Representa a cadeia "aaabbb" e espera "cccccc"
 
 cod_maquina, _ = entrada.split("#")
 mostrar_regras(cod_maquina)
