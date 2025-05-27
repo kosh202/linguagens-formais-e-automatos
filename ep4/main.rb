@@ -68,18 +68,6 @@ def parse_maquina(cod)
   return transicoes, estado_inicial, estados_aceitacao
 end
 
-# def traduzir_fita(fita)
-#   traducao = fita.map do |simbolo|
-#     case simbolo
-#     when 'sc'     then 'a'
-#     when 'scc'    then 'b'
-#     when 'sccc'   then 'c'
-#     when '_'     then '␣'  # ou ' ' se preferir espaço
-#     else '?'
-#     end
-#   end
-#   traducao.join
-# end
 def traduzir_fita(fita)
   traducao = fita.map do |simbolo|
     if simbolo == '_'
@@ -100,8 +88,6 @@ def traduzir_fita(fita)
   end
   traducao.join
 end
-
-
 
 def mostrar_regras(cod)
   regras = []
@@ -206,15 +192,9 @@ def executar_mtu(entrada)
 
 end
 
-# ========= EXEMPLO DE EXECUÇÃO =========
+# ========= entrada =========
 
-# entrada = "fascfasccccdfasccfbsccdfbsccfbsccd#scscsccscc" # Representa a cadeia "aabbb"
-# entrada = "fascfascdfasccfbsccdfbsccfbsccdscc#scscsccsccscc" # Representa a cadeia "aabbcc"
-# entrada = "fascfascdfasccfbsccdfbsccfbsccd#scscscsccscc" # Representa a cadeia "aaabbb" e espera "cccccc"
-# entrada = "fascfaccdfscfascdfasccfscccdfbsccc#scscscsccscc"
-entrada = "fascfascdfasccfbscdfbsccfbsccdfbsccfbsccdsccc#scscscsccscc"
-
-
+entrada = "fascfasccdfasccfbsccdfbsccfbsccd#scscscc"
 
 cod_maquina, _ = entrada.split("#")
 mostrar_regras(cod_maquina)
